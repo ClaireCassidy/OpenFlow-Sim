@@ -10,6 +10,7 @@ public class Controller extends Node {
 
     Terminal terminal;
     private static final int SRC_PORT = 50000;
+    boolean quit = false;
 
     //adjacency matrix (https://www.baeldung.com/java-graphs)
     // adjancencyMatrix[a][b] == "Is there a direct link between router a and router b?"
@@ -21,9 +22,9 @@ public class Controller extends Node {
 
     @Override
     public synchronized void onReceipt(DatagramPacket packet) {
-        terminal.println("Controller received packet from "+PacketHelper.getPacketSrcPort(packet));
+        terminal.println("Controller received packet from " + PacketHelper.getPacketSrcPort(packet));
         int msgType = PacketHelper.getMsgType(packet);
-        terminal.println("Message has type: "+PacketHelper.getMsgTypeAsString(msgType));
+        terminal.println("Message has type: " + PacketHelper.getMsgTypeAsString(msgType));
 
         //if this is a hello packet from a router ...
         if (PacketHelper.getMsgType(packet) == PacketHelper.TYPE_HELLO) {
@@ -51,7 +52,7 @@ public class Controller extends Node {
             System.out.println("Received feature response");
             String payload = PacketHelper.getPayload(packet);
             String[] args = payload.split(",");         //separate the arguments; args[0] == router port no.,
-                                                                // rest are the endpoints its directly connected to
+            // rest are the endpoints its directly connected to
 //            for (String s:args) {
 //                terminal.println(s);
 //                System.out.println(s);
@@ -60,7 +61,7 @@ public class Controller extends Node {
             Integer routerPortNo = Integer.parseInt(args[0].trim());
 
             //Router 1 is at 50007; row/col n of adjacency matrix maps to Router (RouterNo%50007)
-            int adjacencyMatrixKey = routerPortNo%MIN_ROUTER_PORTNO;
+            int adjacencyMatrixKey = routerPortNo % MIN_ROUTER_PORTNO;
             if (adjacencyMatrixKey > 7 || adjacencyMatrixKey < 0) { //only 8 routers
                 System.out.println("ERROR");
                 terminal.println("ERROR");
@@ -69,26 +70,26 @@ public class Controller extends Node {
             //add the router to the list of connected routers
             connectedRouterPorts.add(routerPortNo);
 
-            for (int i=1; i<args.length; i++) { // put the remaining endpoints into the hashmap
+            for (int i = 1; i < args.length; i++) { // put the remaining endpoints into the hashmap
                 Integer curEndpoint = Integer.parseInt(args[i].trim());
                 ArrayList<Integer> directlyConnectedEndpoints;
                 if (!endpointToRouterMap.containsKey(curEndpoint)) {    // if we're creating a new entry in the hashmap for this endpoint
-                    System.out.println("Adding new Endpoint key "+curEndpoint+" with router no. "+routerPortNo);
+                    System.out.println("Adding new Endpoint key " + curEndpoint + " with router no. " + routerPortNo);
                     directlyConnectedEndpoints = new ArrayList<>();
                     directlyConnectedEndpoints.add(routerPortNo);
                     endpointToRouterMap.put(curEndpoint, directlyConnectedEndpoints);
                 } else {    // hashmap already has an entry for this endpoint, add router port number to the list of directly connected endpoints
-                    System.out.println("Appending "+routerPortNo+" to the list of connected routers for "+curEndpoint);
+                    System.out.println("Appending " + routerPortNo + " to the list of connected routers for " + curEndpoint);
                     directlyConnectedEndpoints = endpointToRouterMap.get(curEndpoint);  //get reference to the endpoint's list
                     directlyConnectedEndpoints.add(routerPortNo);                   // add the router
                 }
             }
 
             System.out.println("Current Endpoint-to-Router(s) hashmap status: ");
-            for (Integer endpoint: endpointToRouterMap.keySet()) {
-                System.out.print(endpoint+": <");
-                for (Integer i: endpointToRouterMap.get(endpoint)) {
-                    System.out.print(" "+i+" ");
+            for (Integer endpoint : endpointToRouterMap.keySet()) {
+                System.out.print(endpoint + ": <");
+                for (Integer i : endpointToRouterMap.get(endpoint)) {
+                    System.out.print(" " + i + " ");
                 }
                 System.out.print(">\n");
             }
@@ -121,22 +122,26 @@ public class Controller extends Node {
                 }
             } else {
                 System.out.println("CONTROLLER: Path returned null");
+
+
             }
         }
     }
 
     public synchronized void start() throws Exception {
+        terminal.println("Controller @ " + SRC_PORT + " starting ... ");
         initialiseAdjacencyMatrix(adjacencyMatrix);
         System.out.println("Initialised Adjacency Matrix:");
-        for (boolean[] x : adjacencyMatrix)
-        {
-            for (boolean y : x)
-            {
+        for (boolean[] x : adjacencyMatrix) {
+            for (boolean y : x) {
                 System.out.print(y + " ");
             }
             System.out.println();
         }
 
+        while (!quit) {
+            wait();
+        }
         //sleep(3000);
     }
 
@@ -152,9 +157,9 @@ public class Controller extends Node {
 
     public static void main(String[] args) {
         try {
-            Terminal terminal = new Terminal("Controller @ "+SRC_PORT);
+            Terminal terminal = new Terminal("Controller @ " + SRC_PORT);
             (new Controller(terminal)).start();
-            //terminal.println("Program completed");
+            terminal.println("Program completed");
         } catch (java.lang.Exception e) {
             e.printStackTrace();
         }
@@ -162,7 +167,7 @@ public class Controller extends Node {
 
     // hard code the routing information for the routing table
     private void initialiseAdjacencyMatrix(boolean[][] adjacencyMatrix) {
-        //R1 = {1 1 1 1 0 0 0 0}
+        //R1 = {0 1 1 1 0 0 0 0}
         adjacencyMatrix[0][0] = false;
         adjacencyMatrix[0][1] = true;
         adjacencyMatrix[0][2] = true;
@@ -172,7 +177,7 @@ public class Controller extends Node {
         adjacencyMatrix[0][6] = false;
         adjacencyMatrix[0][7] = false;
 
-        //R2 = {1 1 0 0 1 0 0 0}
+        //R2 = {1 0 0 0 1 0 0 0}
         adjacencyMatrix[1][0] = true;
         adjacencyMatrix[1][1] = false;
         adjacencyMatrix[1][2] = false;
@@ -182,7 +187,7 @@ public class Controller extends Node {
         adjacencyMatrix[1][6] = false;
         adjacencyMatrix[1][7] = false;
 
-        //R3 = {1 0 1 0 0 1 0 0}
+        //R3 = {1 0 0 0 0 1 0 0}
         adjacencyMatrix[2][0] = true;
         adjacencyMatrix[2][1] = false;
         adjacencyMatrix[2][2] = false;
@@ -192,7 +197,7 @@ public class Controller extends Node {
         adjacencyMatrix[2][6] = false;
         adjacencyMatrix[2][7] = false;
 
-        //R4 = {1 0 0 1 0 1 1 0}
+        //R4 = {1 0 0 0 0 1 1 0}
         adjacencyMatrix[3][0] = true;
         adjacencyMatrix[3][1] = false;
         adjacencyMatrix[3][2] = false;
@@ -202,7 +207,7 @@ public class Controller extends Node {
         adjacencyMatrix[3][6] = true;
         adjacencyMatrix[3][7] = false;
 
-        //R5 = {0 1 0 0 1 0 1 0}
+        //R5 = {0 1 0 0 0 0 1 0}
         adjacencyMatrix[4][0] = false;
         adjacencyMatrix[4][1] = true;
         adjacencyMatrix[4][2] = false;
@@ -212,7 +217,7 @@ public class Controller extends Node {
         adjacencyMatrix[4][6] = true;
         adjacencyMatrix[4][7] = false;
 
-        //R6 = {0 0 1 1 0 1 0 1}
+        //R6 = {0 0 1 1 0 0 0 1}
         adjacencyMatrix[5][0] = false;
         adjacencyMatrix[5][1] = false;
         adjacencyMatrix[5][2] = true;
@@ -222,7 +227,7 @@ public class Controller extends Node {
         adjacencyMatrix[5][6] = false;
         adjacencyMatrix[5][7] = true;
 
-        //R7 = {0 0 0 1 1 0 1 1}
+        //R7 = {0 0 0 1 1 0 0 1}
         adjacencyMatrix[6][0] = false;
         adjacencyMatrix[6][1] = false;
         adjacencyMatrix[6][2] = false;
@@ -232,7 +237,7 @@ public class Controller extends Node {
         adjacencyMatrix[6][6] = false;
         adjacencyMatrix[6][7] = true;
 
-        //R8 = {0 0 0 0 0 1 1 1}
+        //R8 = {0 0 0 0 0 1 1 0}
         adjacencyMatrix[7][0] = false;
         adjacencyMatrix[7][1] = false;
         adjacencyMatrix[7][2] = false;
@@ -270,63 +275,72 @@ public class Controller extends Node {
             int endpointRouterPort = endpointToRouterMap.get(endpointPort).get(0); //get the router port directly connected to this endpoint
             int endpointRouterCoord = endpointRouterPort % MIN_ROUTER_PORTNO; // get the corresponding col/row of this router in the adjacency matrix
 
-        // tracks whether a router in the adjacency matrix has been visited yet (prevents loops)
-        boolean[] visited = new boolean[8];
+            // tracks whether a router in the adjacency matrix has been visited yet (prevents loops)
+            boolean[] visited = new boolean[8];
 
-        // List of lists: List of paths to consider in the breadth first search;
-        // each path is a list of cols (routers) to visit in the given order to represent a valid path to the
-        // last router in the list
-        // NOTE: instead of storing routers as their port numbers they are stored as their corresponding position
-        //      in the adjacency matrix, to avoid constant conversion between port number and coordinates in the
-        //      matrix.
-        LinkedList<ArrayList<Integer>> bfsPaths = new LinkedList<>(); //breadth first search paths
-        ArrayList<Integer> startPath = new ArrayList<>();
-        startPath.add(startPort%MIN_ROUTER_PORTNO);
-        bfsPaths.add(startPath);
-        printBfsPaths(bfsPaths);
-
-        while (!bfsPaths.isEmpty()) { // while there are still paths to consider
-
-            ArrayList<Integer> path = bfsPaths.removeFirst(); //the path to consider adjacent edges for
-            System.out.println("CONTROLLER: Removing first item in bfsPaths ... ");
+            // List of lists: List of paths to consider in the breadth first search;
+            // each path is a list of cols (routers) to visit in the given order to represent a valid path to the
+            // last router in the list
+            // NOTE: instead of storing routers as their port numbers they are stored as their corresponding position
+            //      in the adjacency matrix, to avoid constant conversion between port number and coordinates in the
+            //      matrix.
+            LinkedList<ArrayList<Integer>> bfsPaths = new LinkedList<>(); //breadth first search paths
+            ArrayList<Integer> startPath = new ArrayList<>();
+            startPath.add(startPort % MIN_ROUTER_PORTNO);
+            bfsPaths.add(startPath);
             printBfsPaths(bfsPaths);
-            int routerToConsider = path.get(path.size()-1); //last router in the list is the router to consider
-            visited[routerToConsider] = true;              //mark this router as visited
-            System.out.println("CONTROLLER: Marking router at coord "+routerToConsider+" visited");
 
-            for (int i=0; i<8; i++) {   // go through rows of adjacency matrix at this col
-                // if these two routers are connected and i hasn't been visited
-                if (adjacencyMatrix[routerToConsider][i] == true && visited[i] == false) {
-                    if (i == endpointRouterCoord) { // if we've reached the desired router
-                        //we're done
-                        path.add(i);    //add this router to the path
+            while (!bfsPaths.isEmpty()) { // while there are still paths to consider
 
-                        ArrayList<Integer> portPath = new ArrayList<>();
-                        //convert each router coordinate to its associated port number
-                        for (int n:path) {
-                            portPath.add(n+MIN_ROUTER_PORTNO);
+                ArrayList<Integer> path = bfsPaths.removeFirst(); //the path to consider adjacent edges for
+                System.out.println("CONTROLLER: Removing first item in bfsPaths ... ");
+                printBfsPaths(bfsPaths);
+                int routerToConsider = path.get(path.size() - 1); //last router in the list is the router to consider
+                visited[routerToConsider] = true;              //mark this router as visited
+                System.out.println("CONTROLLER: Marking router at coord " + routerToConsider + " visited");
+
+                for (int i = 0; i < 8; i++) {   // go through rows of adjacency matrix at this col
+                    // if these two routers are connected and i hasn't been visited
+                    if (adjacencyMatrix[routerToConsider][i] == true && visited[i] == false) {
+                        if (i == endpointRouterCoord) { // if we've reached the desired router
+                            //we're done
+                            path.add(i);    //add this router to the path
+
+                            ArrayList<Integer> portPath = new ArrayList<>();
+                            //convert each router coordinate to its associated port number
+                            for (int n : path) {
+                                portPath.add(n + MIN_ROUTER_PORTNO);
+                            }
+
+                            System.out.print("\nGOT PATH: <");
+                            for (int n : portPath) {
+                                System.out.print(n + " ");
+                            }
+                            System.out.print(">");
+
+                            return portPath;
+                        } else { // add to path
+                            ArrayList<Integer> newPath = new ArrayList<>();
+                            for (int n : path) {
+                                newPath.add(n);
+                            }
+                            newPath.add(i);
+
+                            bfsPaths.add(newPath);
                         }
-
-                        System.out.print("\nGOT PATH: <");
-                        for (int n:portPath) {
-                            System.out.print(n+" ");
-                        }
-                        System.out.print(">");
-
-                        return portPath;
-                    } else { // add to path
-                        ArrayList<Integer> newPath = new ArrayList<>();
-                        for (int n:path) {
-                            newPath.add(n);
-                        }
-                        newPath.add(i);
-
-                        bfsPaths.add(newPath);
                     }
                 }
+
             }
 
-        }
+            try {
+                DatagramPacket error = PacketHelper.createPacket("Error: No path to target endpoint",
+                        SRC_PORT, startPort, PacketContent.TYPE_ERROR);
+                error.setSocketAddress(new InetSocketAddress(DEFAULT_DST_NODE, PacketHelper.getPacketDstPort(error)));
+                socket.send(error);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
 
 
         } catch (NullPointerException e) {  //will occur if the endpoint passed is not in the list of endpoints
@@ -348,12 +362,12 @@ public class Controller extends Node {
 
         System.out.println("\nPrinting BFS Paths: ");
         System.out.print("<");
-        for (int i=0; i<bfsPaths.size(); i++) {
+        for (int i = 0; i < bfsPaths.size(); i++) {
             System.out.print("<");
-            for (int j=0; j<bfsPaths.get(i).size(); j++) {
-                System.out.print(bfsPaths.get(i).get(j)+ ((j==bfsPaths.get(i).size()-1)?"":" "));
+            for (int j = 0; j < bfsPaths.get(i).size(); j++) {
+                System.out.print(bfsPaths.get(i).get(j) + ((j == bfsPaths.get(i).size() - 1) ? "" : " "));
             }
-            if (i!=bfsPaths.size()-1) {
+            if (i != bfsPaths.size() - 1) {
                 System.out.println(">");
             } else {
                 System.out.print(">");

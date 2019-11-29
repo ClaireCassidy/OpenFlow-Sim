@@ -105,7 +105,7 @@ public class RouterGeneric extends Node {
 
 
         if (msgType == PacketContent.TYPE_HELLO) {
-            //none
+            //do nothing
         } else if (msgType == PacketContent.TYPE_FEATURE_REQUEST) {
             // create feature response information; will be stored in the payload
             String payload = ""+srcPort;
